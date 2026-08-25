@@ -1,0 +1,8 @@
+# OS / editor
+.DS_Store
+*.log
+
+# Flutter / Dart (apps/mobile)
+.dart_tool/
+.pub-cache/
+.pub/

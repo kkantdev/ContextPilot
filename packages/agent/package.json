@@ -1,0 +1,57 @@
+{
+  "name": "contextpilot",
+  "version": "1.0.0",
+  "description": "ContextPilot Laptop Agent - Phone-to-Laptop developer bridge and AI agent",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "contextpilot": "bin/contextpilot.js"
+  },
+  "scripts": {
+    "prepack": "npm run build",
+    "build": "tsc",
+    "dev": "tsx src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run",
+    "mock-client": "tsx src/cli/index.ts mock-client"
+  },
+  "keywords": [
+    "contextpilot",
+    "ai",
+    "agent",
+    "developer-tools",
+    "ollama",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

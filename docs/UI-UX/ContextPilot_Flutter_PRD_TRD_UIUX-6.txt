@@ -1,0 +1,1206 @@
+# ContextPilot — Flutter Mobile App Specification
+
+Version: 1.0
+Status: Hackathon MVP Planning Document
+Project: ContextPilot Flutter Client
+Platform: Android
+Purpose: This document is the single source of truth for an AI coding agent implementing the Flutter mobile application.
+
+IMPORTANT:
+- Do NOT generate or implement code from this document unless explicitly instructed.
+- Do NOT invent APIs, backend services, packages, or capabilities that are not defined here.
+- The laptop/NPM agent is a separate project. This document defines only the Flutter client and the contract it needs from the laptop agent.
+- Keep the architecture modular so the laptop agent protocol can evolve without rewriting the UI.
+- Prioritize a working hackathon MVP over unnecessary features.
+
+---
+
+# 0. DOCUMENT INDEX
+
+1. Product Overview
+2. Problem
+3. Vision
+4. Goals
+5. Non-Goals
+6. Target Users
+7. Core User Story
+8. MVP Scope
+9. Feature Requirements
+10. User Flows
+11. Connection & Pairing Logic
+12. Agent Interaction Model
+13. AI Interaction Model
+14. Approval & Safety Model
+15. Project Context Model
+16. Activity & Operation Model
+17. Error & Edge Cases
+18. Information Architecture
+19. Screen Inventory
+20. UI/UX Specification
+21. Navigation
+22. Design System
+23. Accessibility
+24. State Management Expectations
+25. Flutter Architecture Expectations
+26. Data Models / Protocol Concepts
+27. Security & Privacy
+28. Performance
+29. Offline / Disconnected Behavior
+30. Hackathon Demo Flow
+31. MVP Acceptance Criteria
+32. Future Scope
+33. Dependencies on NPM Agent
+34. Open Decisions
+35. Implementation Rules for AI Coding Agent
+
+---
+
+# 1. PRODUCT OVERVIEW
+
+ContextPilot is a phone-first AI developer agent.
+
+The Flutter application is the mobile control center. It allows a developer to connect to a ContextPilot Agent running on their laptop and use natural language to inspect, understand, modify, test, and secure a software project.
+
+The Flutter app does NOT directly access the laptop filesystem.
+
+The Flutter app communicates with the laptop-side ContextPilot Agent over the local network using the ContextPilot communication protocol.
+
+Conceptual architecture:
+
+Phone
+  ↓
+Flutter ContextPilot App
+  ↓
+Local network
+  ↓
+ContextPilot NPM/Laptop Agent
+  ↓
+Project files / terminal / Git / tests / local AI
+
+The Flutter app is responsible for:
+- User interaction
+- Pairing
+- Connection state
+- Conversation
+- Operation approval
+- Progress display
+- Results
+- Project overview
+- Git/change review
+- Security findings
+- Voice input where supported
+- Clear safety boundaries
+
+---
+
+# 2. PROBLEM
+
+Developers often need to repeatedly switch between:
+- IDE
+- terminal
+- project files
+- Git
+- test output
+- documentation
+- AI assistants
+
+Existing AI coding assistants are usually centered around the desktop IDE.
+
+ContextPilot explores a phone-first workflow where the developer can request development actions from the phone while the laptop-side agent performs controlled operations on the actual project.
+
+The key problem is not simply "chat with AI."
+
+The problem is:
+How can a developer use a phone as a practical control center for a real software project without giving an AI uncontrolled access to the computer?
+
+---
+
+# 3. VISION
+
+Make the phone a secure, understandable, and useful control surface for AI-assisted software development.
+
+The desired experience:
+
+"Tell ContextPilot what I want → understand the plan → approve important actions → watch the laptop agent work → review the result."
+
+---
+
+# 4. GOALS
+
+## Primary goals
+
+1. Connect a phone to a laptop-side ContextPilot Agent.
+2. Make pairing simple using a QR code.
+3. Show connection and project status clearly.
+4. Allow natural-language developer requests.
+5. Display the AI's understanding/plan.
+6. Require approval for meaningful file changes or risky operations.
+7. Show operation progress in real time.
+8. Show created/modified files.
+9. Show test/build results.
+10. Show Git changes.
+11. Display security findings.
+12. Provide a polished phone-first hackathon experience.
+
+## Secondary goals
+
+- Voice input.
+- Project health summary.
+- Conversation history for the current session.
+- Quick actions.
+- Project context summary.
+- Human-readable technical explanations.
+
+---
+
+# 5. NON-GOALS
+
+Do NOT implement these in the initial Flutter MVP:
+
+- Full desktop/Windows application.
+- Cursor integration.
+- VS Code extension.
+- Cloud backend.
+- User accounts.
+- Social features.
+- Billing/subscriptions.
+- Remote internet access.
+- Multi-user collaboration.
+- Full IDE/editor inside the phone.
+- Direct unrestricted filesystem access.
+- Direct execution of shell commands from the phone.
+- Permanent cloud storage of project code.
+
+The phone must communicate through the ContextPilot Agent.
+
+---
+
+# 6. TARGET USERS
+
+Primary:
+- Student developers
+- Software developers
+- AI-assisted developers
+- Hackathon participants
+- Developers working with Flutter, React, Next.js, Node.js, Python and similar projects
+
+Initial persona:
+A developer working on a real project in VS Code who wants to inspect or modify the project from their phone.
+
+---
+
+# 7. CORE USER STORY
+
+As a developer, I want to open ContextPilot on my phone, pair it with my laptop, select the active project, describe what I want in natural language, review the proposed actions, approve them, and monitor the work without needing to manually perform every repetitive development task.
+
+Example:
+
+"Create an authentication feature for this project."
+
+ContextPilot:
+1. Understands the project.
+2. Creates a plan.
+3. Shows files that will change.
+4. Requests approval.
+5. Sends approved actions to the laptop agent.
+6. Shows progress.
+7. Shows test results.
+8. Shows final changes.
+
+---
+
+# 8. MVP SCOPE
+
+The MVP must support:
+
+## Connection
+- Discover/connect to a laptop agent.
+- QR pairing.
+- Connection status.
+- Disconnect/reconnect.
+
+## Project
+- Display connected project name.
+- Display project type/framework if supplied by agent.
+- Display project root label.
+- Display basic project health.
+
+## AI interaction
+- Text prompt.
+- Conversation view.
+- AI response.
+- Plan display.
+- Operation progress.
+
+## Agent operations
+The Flutter client must be able to request/receive events for:
+- Read/search project information.
+- Create folder.
+- Create file.
+- Modify file.
+- Run command.
+- Run tests.
+- Git status.
+- Git diff.
+- Security scan.
+
+## Safety
+- Approval before meaningful modifications.
+- Clear dangerous-action warning.
+- Cancel operation.
+- Show exactly what is about to happen when possible.
+
+## Results
+- Files created.
+- Files modified.
+- Command output summary.
+- Test result.
+- Git diff summary.
+- Security findings.
+
+---
+
+# 9. FEATURE REQUIREMENTS
+
+## 9.1 Onboarding
+
+The first launch should explain the concept in a minimal 2–3 screen flow.
+
+Screen concepts:
+1. "Your project, from your phone."
+2. "Connect to ContextPilot Agent."
+3. "Review before changes."
+
+Allow user to skip onboarding.
+
+Do not create account/login.
+
+---
+
+## 9.2 Connect Laptop
+
+Primary CTA:
+"Connect Laptop"
+
+Options:
+- Scan QR
+- Show connection instructions if pairing fails
+
+QR scanning must read the connection payload supplied by the laptop agent.
+
+The app must not assume a fixed IP address.
+
+The payload may contain:
+- protocol version
+- host
+- port
+- secure/non-secure transport indicator
+- pairing token
+- agent name
+- project identifier/name
+
+The exact protocol schema will be finalized with the NPM agent project.
+
+---
+
+## 9.3 Connection State
+
+The app must clearly show:
+
+- Connecting
+- Connected
+- Reconnecting
+- Disconnected
+- Pairing failed
+- Agent unavailable
+- Incompatible protocol version
+
+Connection status should be visible from the main interface.
+
+---
+
+# 10. USER FLOWS
+
+## Flow A — First connection
+
+Launch
+→ onboarding/skip
+→ Connect Laptop
+→ QR scanner
+→ validate payload
+→ connect
+→ receive agent/project information
+→ show Connected
+→ Home
+
+## Flow B — Normal request
+
+Home
+→ Ask ContextPilot
+→ type/voice request
+→ send
+→ AI understanding
+→ plan
+→ approval if required
+→ execution
+→ progress
+→ result
+→ review changes
+
+## Flow C — Create feature
+
+User:
+"Create an authentication feature."
+
+Agent/AI:
+- analyze project
+- propose plan
+- list files
+- request approval
+
+User:
+Approve
+
+Agent:
+- create files
+- modify files
+- run tests
+
+Phone:
+- display progress
+- display result
+- display changed files
+
+## Flow D — Diagnose error
+
+User:
+"Why is my build failing?"
+
+Agent:
+- inspect project
+- run relevant diagnostic command
+- return error/context
+
+Phone:
+- show diagnosis
+- show affected files
+- show suggested fix
+
+If fix is requested:
+→ plan
+→ approval
+→ apply
+→ test
+→ result
+
+## Flow E — Security scan
+
+Home
+→ Security
+→ Run Scan
+→ progress
+→ findings
+→ severity
+→ affected file
+→ explanation
+→ optional fix
+→ approval
+→ result
+
+---
+
+# 11. CONNECTION & PAIRING LOGIC
+
+The QR code is a pairing mechanism, not the communication transport.
+
+Expected model:
+
+Phone
+  ↓ scans QR
+Connection payload
+  ↓
+Phone opens local connection
+  ↓
+Authentication/pairing
+  ↓
+WebSocket/HTTP communication
+  ↓
+Connected
+
+Same local network is the initial expected environment.
+
+Possible network:
+- Wi-Fi router
+- compatible local hotspot
+
+Do not assume internet access.
+
+The app should not require cloud connectivity for the core connection.
+
+The exact networking implementation belongs to the NPM agent and shared protocol specification.
+
+---
+
+# 12. AGENT INTERACTION MODEL
+
+The Flutter app should treat the laptop agent as an external capability provider.
+
+The Flutter app must NOT directly execute:
+- shell commands
+- filesystem operations
+- Git commands
+
+Instead:
+
+Flutter
+→ sends intent/request
+→ Agent
+→ validates/executes
+→ Agent sends events/results
+→ Flutter renders them
+
+The UI should never pretend an action succeeded before receiving confirmation.
+
+---
+
+# 13. AI INTERACTION MODEL
+
+The user should interact primarily through natural language.
+
+Example prompts:
+
+- "Analyze this project."
+- "Why is the build failing?"
+- "Create an auth feature."
+- "Find unused dependencies."
+- "Run the tests."
+- "Review my latest changes."
+- "Check this project for security problems."
+
+The Flutter app does not need to know the internal model provider.
+
+The app should communicate with the agent through abstract AI/agent events.
+
+This allows the laptop agent to use:
+- local/open-source model
+- future on-device model
+- optional cloud fallback
+
+without requiring UI changes.
+
+---
+
+# 14. APPROVAL & SAFETY MODEL
+
+This is a core feature.
+
+Every operation should have a risk level supplied by the agent.
+
+Suggested categories:
+
+SAFE:
+- project metadata
+- read/search
+- git status
+
+REVIEW:
+- create file
+- modify file
+- install dependency
+- run tests/build
+
+DANGEROUS:
+- delete files
+- destructive shell commands
+- reset/revert operations
+- potentially destructive project/database actions
+
+The Flutter app must visually distinguish risk.
+
+Approval screen should show:
+
+- What will happen
+- Files affected
+- Commands if applicable
+- Risk level
+- Approve
+- Reject
+- Cancel
+
+Never use a vague "Continue" button when the operation has destructive consequences.
+
+---
+
+# 15. PROJECT CONTEXT MODEL
+
+The Flutter app should display a concise project context summary supplied by the agent.
+
+Possible information:
+- Project name
+- Framework
+- Language
+- Package manager
+- Git status
+- Branch
+- Last activity
+- Test status
+- Security status
+
+Do not duplicate full project files into mobile storage unless explicitly needed.
+
+---
+
+# 16. ACTIVITY & OPERATION MODEL
+
+Every meaningful operation should have:
+- operation ID
+- title
+- type
+- status
+- start time
+- progress/events
+- affected files if known
+- result
+- error if failed
+
+Suggested statuses:
+
+queued
+planning
+awaiting_approval
+approved
+running
+testing
+completed
+failed
+cancelled
+
+The phone should render these states consistently.
+
+---
+
+# 17. ERROR & EDGE CASES
+
+Handle:
+
+## Connection
+- Wi-Fi unavailable
+- Laptop unreachable
+- Agent stopped
+- Pairing token invalid
+- QR invalid
+- Protocol mismatch
+- Connection timeout
+- Connection dropped
+
+## Operation
+- Permission denied
+- File no longer exists
+- File changed externally
+- Command failed
+- Test failed
+- AI unable to produce a safe action
+- Operation cancelled
+
+## UI
+Never leave the user with an indefinite spinner.
+
+Every long-running operation needs:
+- status
+- cancel option when supported
+- failure state
+- retry where appropriate
+
+---
+
+# 18. INFORMATION ARCHITECTURE
+
+Recommended primary navigation:
+
+1. Home
+2. Ask
+3. Activity
+4. Project
+5. Settings
+
+Security can be accessible from Home/Project and may also be a quick action.
+
+Avoid excessive bottom navigation items.
+
+---
+
+# 19. SCREEN INVENTORY
+
+Required screens:
+
+1. Splash
+2. Onboarding
+3. Home
+4. Connect Laptop
+5. QR Scanner
+6. Pairing/Connection Progress
+7. Connected Project
+8. AI Chat / Ask
+9. AI Plan
+10. Approval
+11. Operation Progress
+12. Operation Result
+13. File Changes / Diff Summary
+14. Security Scan
+15. Security Finding Details
+16. Activity
+17. Project Overview
+18. Settings
+19. Connection Details
+20. Error/Recovery states
+
+---
+
+# 20. UI/UX SPECIFICATION
+
+## Design direction
+
+The UI should feel:
+- modern
+- technical
+- premium
+- focused
+- fast
+- mobile-native
+
+Avoid:
+- generic chatbot appearance
+- excessive gradients
+- overly decorative dashboards
+- cluttered enterprise UI
+- fake terminal screens everywhere
+
+The app should feel like a serious developer tool.
+
+---
+
+## Home
+
+Purpose:
+Give the developer immediate understanding of project state and one obvious way to ask for help.
+
+Recommended hierarchy:
+
+Header:
+- ContextPilot
+- connection status
+
+Project card:
+- project name
+- framework
+- branch
+- health indicator
+
+Primary action:
+"Ask ContextPilot"
+
+Quick actions:
+- Analyze
+- Run Tests
+- Security Scan
+- Review Changes
+
+Recent activity:
+- latest operations
+
+---
+
+## Ask / Chat
+
+Primary elements:
+- conversation
+- AI response cards
+- prompt composer
+- attachment/screenshot capability if implemented
+- microphone button if voice is implemented
+- send button
+
+AI responses should distinguish:
+
+Explanation
+Plan
+Action
+Result
+
+Avoid showing raw internal agent reasoning.
+
+Show concise summaries rather than chain-of-thought.
+
+---
+
+## Plan Card
+
+Example:
+
+"Create authentication feature"
+
+Plan:
+1. Create auth service
+2. Add login screen
+3. Update routing
+4. Add tests
+
+Files:
+- auth/auth_service.dart
+- auth/login.dart
+- routes.dart
+
+Buttons:
+- Review
+- Approve
+- Reject
+
+---
+
+## Approval Screen
+
+Make approval unmistakable.
+
+Example:
+
+"4 files will change"
+
+Risk:
+REVIEW REQUIRED
+
+Show:
+- files
+- operation types
+- commands if any
+- concise reason
+
+Primary:
+"Approve Changes"
+
+Secondary:
+"Reject"
+
+Do not hide important details.
+
+---
+
+## Operation Progress
+
+Show live event timeline:
+
+✓ Analyzing project
+✓ Creating auth directory
+✓ Creating auth service
+⟳ Running tests
+○ Git diff
+
+Use clear statuses.
+
+Do not flood the screen with raw logs by default.
+
+Provide:
+"View details" for technical logs.
+
+---
+
+## Result
+
+Success:
+- clear success state
+- summary
+- changed files
+- test result
+- next action
+
+Failure:
+- clear failure state
+- reason
+- affected operation
+- retry if possible
+- view details
+
+---
+
+## Security
+
+Security overview should show:
+
+Security Score
+or
+Security Status
+
+Findings grouped by severity:
+
+Critical
+High
+Medium
+Low
+
+Each finding:
+- title
+- severity
+- file
+- explanation
+- recommended fix
+
+Fix action must require approval.
+
+---
+
+# 21. NAVIGATION
+
+Recommended:
+
+Bottom navigation:
+- Home
+- Ask
+- Activity
+- Project
+- Settings
+
+Modal/full-screen flows:
+- QR scanner
+- Approval
+- Security finding
+- Detailed operation
+
+Do not bury the connection status.
+
+---
+
+# 22. DESIGN SYSTEM
+
+Use a restrained developer-tool visual language.
+
+Typography:
+- clear sans-serif
+- strong hierarchy
+- readable code/log typography
+
+Spacing:
+- consistent spacing scale
+- generous touch targets
+- avoid dense desktop-style layouts
+
+Components:
+- cards
+- status chips
+- action buttons
+- operation timeline
+- code/diff viewer
+- bottom sheets
+- confirmation dialogs
+
+Status colors should be semantic:
+- success
+- warning
+- danger
+- neutral
+- active
+
+Do not overuse color.
+
+Dark mode should be supported because developer tooling is commonly used in dark environments.
+
+---
+
+# 23. ACCESSIBILITY
+
+Requirements:
+- readable text
+- sufficient contrast
+- touch targets suitable for mobile
+- don't communicate status by color alone
+- meaningful labels
+- screen-reader-friendly controls
+- support system font scaling where practical
+
+---
+
+# 24. STATE MANAGEMENT EXPECTATIONS
+
+Use a predictable state architecture.
+
+State categories:
+
+ConnectionState
+ProjectState
+ConversationState
+OperationState
+ApprovalState
+SecurityState
+SettingsState
+
+Do not put all application state into one giant controller.
+
+Persist only what is necessary.
+
+Sensitive connection tokens must be stored securely.
+
+---
+
+# 25. FLUTTER ARCHITECTURE EXPECTATIONS
+
+Recommended logical layers:
+
+Presentation
+  ↓
+Application / State
+  ↓
+Domain
+  ↓
+Data / Protocol
+  ↓
+Network / Local storage
+
+Suggested conceptual modules:
+
+- onboarding
+- connection
+- project
+- chat
+- operations
+- approval
+- security
+- activity
+- settings
+- shared UI
+- protocol
+
+Do not tightly couple widgets directly to WebSocket implementation.
+
+---
+
+# 26. DATA MODELS / PROTOCOL CONCEPTS
+
+The Flutter project should prepare models/interfaces for concepts such as:
+
+ConnectionInfo
+AgentInfo
+ProjectInfo
+AgentCapabilities
+ChatMessage
+AgentRequest
+AgentEvent
+Operation
+OperationStep
+ApprovalRequest
+FileChange
+CommandResult
+TestResult
+GitStatus
+SecurityFinding
+ErrorEvent
+
+The exact JSON schema is a shared contract with the NPM project and must be finalized before production implementation.
+
+Do not invent final protocol fields inside Flutter without agreement with the NPM project.
+
+---
+
+# 27. SECURITY & PRIVACY
+
+Core principles:
+
+1. No account required for MVP.
+2. No cloud storage of source code.
+3. Local network first.
+4. Pairing token required.
+5. Connection must be authenticated.
+6. Sensitive tokens stored securely on phone.
+7. Never display secrets unnecessarily.
+8. Never automatically approve dangerous operations.
+9. Show user what will change.
+10. Disconnect must invalidate/revoke the session as appropriate.
+
+The phone should clearly communicate:
+"Your project remains on your laptop."
+
+---
+
+# 28. PERFORMANCE
+
+Target:
+- fast app startup
+- responsive UI
+- smooth QR scanning
+- low-latency connection status
+- real-time operation events
+- no blocking UI during long operations
+
+Large logs should be streamed/paginated rather than rendering unlimited content.
+
+Avoid loading entire repositories into phone memory.
+
+---
+
+# 29. OFFLINE / DISCONNECTED BEHAVIOR
+
+If laptop is disconnected:
+
+Show:
+"ContextPilot Agent disconnected."
+
+Allow:
+- viewing previously loaded local UI state
+- viewing recent activity cached locally where appropriate
+- reconnect
+
+Do not pretend AI/project operations are available when the agent is offline.
+
+---
+
+# 30. HACKATHON DEMO FLOW
+
+Primary demo:
+
+1. Open ContextPilot.
+2. Show connected laptop/project.
+3. Ask:
+   "Create an authentication feature for this project."
+4. AI analyzes project.
+5. Show plan.
+6. Show files that will change.
+7. Approve.
+8. Show real-time progress.
+9. Show tests running.
+10. Show successful result.
+11. Ask:
+   "Now check this project for security issues."
+12. Show security finding.
+13. Approve a fix.
+14. Show final project state.
+
+The demo should emphasize:
+
+Phone
+→ AI
+→ laptop agent
+→ real project
+→ approval
+→ real result
+
+---
+
+# 31. MVP ACCEPTANCE CRITERIA
+
+The Flutter MVP is considered functional when:
+
+[ ] App launches successfully.
+[ ] User can reach Connect Laptop.
+[ ] User can scan a valid ContextPilot QR payload.
+[ ] App can establish a local connection to the agent.
+[ ] Connection status is visible.
+[ ] Project information is received and displayed.
+[ ] User can send a natural-language request.
+[ ] Agent response is displayed.
+[ ] Agent can send a plan to the phone.
+[ ] Phone can display an approval request.
+[ ] User can approve/reject.
+[ ] Operation progress is shown.
+[ ] Operation completion is shown.
+[ ] File changes are displayed.
+[ ] Test results are displayed.
+[ ] Git status/diff summary is displayed.
+[ ] Security findings can be displayed.
+[ ] Disconnection is handled gracefully.
+[ ] No unrestricted filesystem access is implemented in Flutter.
+[ ] No cloud backend is required for the MVP.
+
+---
+
+# 32. FUTURE SCOPE
+
+Possible later features:
+
+- On-device LLM
+- Voice-first developer workflow
+- Screenshot understanding
+- Camera/OCR for error messages
+- GitHub integration
+- GitHub issue creation
+- Pull request review
+- Remote project access
+- VS Code extension
+- Multi-project management
+- Team collaboration
+- Advanced security analysis
+- Autonomous task execution with configurable permissions
+
+These are NOT required for the initial hackathon MVP.
+
+---
+
+# 33. DEPENDENCIES ON NPM AGENT
+
+Flutter depends on the NPM agent for:
+
+- connection endpoint
+- QR pairing payload
+- authentication
+- project information
+- AI responses
+- operation planning
+- tool execution
+- operation events
+- file changes
+- test results
+- Git results
+- security scan results
+
+The Flutter team/agent must not assume the implementation details of the NPM agent.
+
+The shared protocol must be versioned.
+
+---
+
+# 34. OPEN DECISIONS
+
+Before final implementation, confirm:
+
+1. Exact WebSocket message format.
+2. Exact QR payload format.
+3. Authentication mechanism.
+4. Whether the agent uses HTTP + WebSocket or WebSocket only.
+5. Local network discovery method, if any.
+6. Exact local LLM/runtime.
+7. Whether voice input is included in MVP.
+8. Whether screenshot/image input is included in MVP.
+9. Exact security scanner implementation.
+10. Exact Office Kit integration available at the hackathon.
+
+Do not invent these values.
+
+---
+
+# 35. IMPLEMENTATION RULES FOR AI CODING AGENT
+
+CRITICAL RULES:
+
+1. Inspect the actual Flutter project before making changes.
+2. Do not invent files or dependencies.
+3. Do not install unnecessary packages.
+4. Keep features modular.
+5. Do not implement the NPM agent inside the Flutter project.
+6. Do not implement a Windows GUI.
+7. Do not integrate Cursor unless explicitly requested later.
+8. Do not create a cloud backend for the MVP.
+9. Do not bypass the approval system.
+10. Do not expose unrestricted terminal/file access to the Flutter UI.
+11. Do not store source-code repositories unnecessarily on the phone.
+12. Keep protocol code isolated from UI.
+13. Use mock/local protocol adapters during Flutter development if the NPM agent is not yet available.
+14. Clearly label mock data and do not confuse it with real agent responses.
+15. Keep the UI production-quality but prioritize functional flows.
+16. Every asynchronous operation must have loading, success, failure, and cancellation/recovery states where applicable.
+17. Never expose model chain-of-thought. Display only concise reasoning summaries, plans, actions, and results.
+18. Follow the existing project's actual architecture if this document is introduced into an existing codebase; do not rewrite unrelated code.
+19. Before adding a dependency, verify that it is necessary.
+20. The final Flutter app should be capable of operating as the phone-side client independently from the NPM agent implementation.
+
+---
+
+# END OF FLUTTER SPECIFICATION
+
+Next document to create separately:
+ContextPilot NPM/Laptop Agent PRD + TRD + CLI UX Specification.
