@@ -115,7 +115,7 @@ QR + manual pairing, live WebSocket transport with reconnect, 5-tab shell, chat 
 
 - `AppConstants.defaultPort` is `8080` but the agent defaults to `8765`; the manual connect screen defaults the port field to `8080` too (QR carries the real port, so this only affects manual entry).
 - `MockAgentService` is a deprecated no-op shell; `isMockMode` is effectively always `false`.
-- `apps/mobile/README.md` references the pre-organization path (`../contextpilot-npm`).
+- `apps/mobile/README.md` references the pre-organization path (`../packages/agent`).
 - Long-running UI states rely on streamed `command.*` events; a mid-stream disconnect resets to reconnecting.
 
 ## Planned features

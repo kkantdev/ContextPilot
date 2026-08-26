@@ -10,7 +10,7 @@ flutter test
 flutter build apk --debug
 ```
 
-Install `build/app/outputs/flutter-apk/app-debug.apk` on an Android device. Start the laptop agent in `../contextpilot-npm` with `npm install && npm run dev`; scan its QR code from the app. On Windows, follow the firewall command printed by the agent.
+Install `build/app/outputs/flutter-apk/app-debug.apk` on an Android device. Start the laptop agent in `../packages/agent` with `npm install && npm run dev`; scan its QR code from the app. On Windows, follow the firewall command printed by the agent.
 
 Mock mode is available only in debug/profile builds and is clearly marked in the UI. Release builds cannot enable it.
 

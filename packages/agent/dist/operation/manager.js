@@ -1,7 +1,42 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OperationManager = void 0;
 const logger_1 = require("../utils/logger");
+const registry_1 = require("../commands/registry");
+const executor_1 = require("../commands/executor");
 const GROUP_TOOL_BY_ACTION = {
     flutter_doctor: 'run_flutter_command', flutter_analyze: 'run_flutter_command', flutter_test: 'run_flutter_command', flutter_pub_get: 'run_flutter_command', flutter_pub_outdated: 'run_flutter_command', flutter_build_apk: 'run_flutter_command', flutter_run: 'run_flutter_command',
     npm_install: 'run_npm_command', npm_test: 'run_npm_command', npm_run_build: 'run_npm_command', npm_run_lint: 'run_npm_command', npm_audit: 'run_npm_command', npm_audit_high: 'run_npm_command',
@@ -16,9 +51,11 @@ class OperationManager {
     activeOperations = new Map();
     toolRegistry;
     eventManager;
-    constructor(toolRegistry, eventManager) {
+    workspaceManager;
+    constructor(toolRegistry, eventManager, workspaceManager) {
         this.toolRegistry = toolRegistry;
         this.eventManager = eventManager;
+        this.workspaceManager = workspaceManager;
     }
     createOperation(prompt) {
         const operationId = `op-${Date.now()}`;
@@ -70,7 +107,44 @@ class OperationManager {
         op.state = 'running';
         op.pendingApproval = undefined;
         this.eventManager.broadcast('tool_started', { operationId, stepId: step.stepId, tool: step.tool, description: step.description }, undefined, operationId);
-        const result = await this.toolRegistry.executeTool(step.tool, step.args);
+        // Check if this is a command action that should use streaming executor
+        const isCommandAction = step.args && step.args.action && (0, registry_1.getCommandDefinition)(step.args.action);
+        let result;
+        if (isCommandAction) {
+            // Use streaming executor for command actions with operation context
+            const { runCommandTemplate } = await Promise.resolve().then(() => __importStar(require('../commands/executor')));
+            try {
+                const commandResult = await runCommandTemplate(this.workspaceManager, {
+                    action: step.args.action,
+                    args: step.args,
+                    operationId,
+                    onEvent: (eventType, payload) => {
+                        // Emit command.* streaming events
+                        this.eventManager.broadcast(eventType, payload);
+                    },
+                });
+                result = {
+                    tool: step.tool,
+                    success: commandResult.status === 'success',
+                    output: commandResult,
+                    error: commandResult.error,
+                    durationMs: commandResult.durationMs,
+                };
+            }
+            catch (error) {
+                result = {
+                    tool: step.tool,
+                    success: false,
+                    output: null,
+                    error: error.message,
+                    durationMs: 0,
+                };
+            }
+        }
+        else {
+            // Use standard tool execution for non-command actions
+            result = await this.toolRegistry.executeTool(step.tool, step.args);
+        }
         op.results.push(result);
         this.eventManager.broadcast('tool_completed', { operationId, stepId: step.stepId, tool: step.tool, result }, undefined, operationId);
         if (!result.success) {
@@ -103,6 +177,21 @@ class OperationManager {
     }
     getOperation(operationId) {
         return this.activeOperations.get(operationId);
+    }
+    cancelOperation(operationId) {
+        const op = this.activeOperations.get(operationId);
+        if (!op) {
+            logger_1.logger.warn(`Cannot cancel operation ${operationId}: not found`);
+            return false;
+        }
+        // Try to cancel the underlying command process if it's running
+        const processKilled = (0, executor_1.cancelCommand)(operationId);
+        // Update operation state regardless of whether process was found
+        op.state = 'cancelled';
+        // Broadcast cancellation events
+        this.eventManager.broadcast('operation_cancelled', { operationId, reason: 'Cancelled by user request' }, undefined, operationId);
+        logger_1.logger.info(`Operation ${operationId} cancelled (process killed: ${processKilled})`);
+        return true;
     }
 }
 exports.OperationManager = OperationManager;

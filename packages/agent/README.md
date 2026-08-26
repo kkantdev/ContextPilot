@@ -12,10 +12,12 @@ ContextPilot is a local-first laptop agent that lets the ContextPilot mobile app
 
 ## Install and run
 
+> **Note:** The npm package name is `@kkantdev/contextpilot`, but the installed CLI command remains `contextpilot`.
+
 Run the agent from the root of the project you want to work on:
 
 ```sh
-npm install -g contextpilot
+npm install -g @kkantdev/contextpilot
 cd /path/to/your/project
 contextpilot start
 ```
@@ -23,7 +25,7 @@ contextpilot start
 Or run it without a global install:
 
 ```sh
-npx contextpilot start
+npx @kkantdev/contextpilot start
 ```
 
 The command prints a QR code. Scan it from the ContextPilot mobile app to pair. Pairing tokens expire after five minutes.

@@ -60,7 +60,7 @@ The following appear only in PRD/TRD/UI-UX or are marked TODO; they are **not im
 - `MockAgentService` in the Flutter app is a deprecated no-op shell (empty streams, no-op methods) retained for backward compatibility; mock mode `isMockMode` is effectively always `false`.
 - The agent keeps a single active session; pairing again replaces the current session.
 - Some long-running commands (e.g., `flutter run`, `docker compose up`) will run until the 120s timeout unless cancelled.
-- `apps/mobile/README.md` still references the old `../contextpilot-npm` path (pre-organization).
+- `apps/mobile/README.md` still references the old `../packages/agent` path (pre-organization).
 - Existing legacy memory docs (`docs/AI-Memory/AI-MEMORY.md`, `AI-MEMORY-COMPLETE.md`) predate the reorganized layout and count 10 commands; the current registry has 28. They are preserved as-is (this file is the current one).
 
 ## 6. Current Architecture

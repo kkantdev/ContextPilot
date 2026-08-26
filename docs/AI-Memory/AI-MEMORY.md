@@ -7,14 +7,14 @@
 ## 1. PROJECT OVERVIEW
 
 **ContextPilot** is a hybrid streaming command execution system with dual protocol support:
-- **Flutter app** (`contextpilot-flutter`) - Mobile control surface
-- **NPM agent** (`contextpilot-npm`) - Laptop agent with streaming terminal execution
+- **Flutter app** (`ContextPilot`) - Mobile control surface
+- **NPM agent** (`contextpilot`) - Laptop agent with streaming terminal execution
 
 ```
-Developer's Phone [contextpilot-flutter]
+Developer's Phone [ContextPilot]
          │ WebSocket (ws://) over Local Wi-Fi
          ▼
-  Laptop Agent [contextpilot-npm]
+  Laptop Agent [contextpilot]
          │ ── Streaming Command Executor (NEW)
          ├── Dual Protocol (operation_* + command.*)
          ├── Real-time stdout/stderr streaming
@@ -26,14 +26,14 @@ Developer's Phone [contextpilot-flutter]
 
 ## 2. RECENT IMPLEMENTATION (HYBRID STREAMING SYSTEM)
 
-### ✅ NPM Agent - Streaming Executor (`contextpilot-npm`)
+### ✅ NPM Agent - Streaming Executor (`contextpilot`)
 - **Streaming executor** (`src/commands/executor.ts`) with real-time stdout/stderr capture
 - **Dual event emission**: maintains existing `operation_*`/`tool_*` events + new `command.*` streaming events
 - **Windows support**: `.cmd` tools (npm, flutter) route through ComSpec with `/d /s /c` flags
 - **Cancellation**: `command.cancel` → `OperationManager.cancelOperation()` → `process.kill()`
 - **Updated commandTools.ts**: delegates to streaming executor (removed duplicate `exec` code)
 
-### ✅ Flutter App - Terminal UI (`contextpilot-flutter`)
+### ✅ Flutter App - Terminal UI (`ContextPilot`)
 - **Extended Operation model**: `TerminalOutputLine`, `commandText`, `exitCode`, `isStreamingCommand`
 - **sendCommand method**: `chatProvider.sendCommand(action, args, requestId)` sends `action_request`
 - **Live terminal UI**: `OperationProgressScreen` shows real-time stdout/stderr with color coding
@@ -69,13 +69,13 @@ Developer's Phone [contextpilot-flutter]
 
 ## 4. KEY ARCHITECTURE DECISIONS
 
-### NPM Agent (`contextpilot-npm`)
+### NPM Agent (`contextpilot`)
 - **Single executor**: One `child_process` spawn per command with real-time streaming
 - **No duplication**: Removed parallel `exec` implementations
 - **Process registry**: Track running commands by `operationId` for cancellation
 - **Event correlation**: `requestId` maps to `operationId`, falls back to server-generated ID
 
-### Flutter App (`contextpilot-flutter`)
+### Flutter App (`ContextPilot`)
 - **Riverpod state management**: All providers use `StateNotifierProvider`
 - **Dual operation support**: Traditional operations + streaming commands
 - **Live terminal**: Real-time output with stdout (green) / stderr (red) color coding

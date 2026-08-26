@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ActionRequestSchema = exports.ApprovalResponseSchema = exports.UserRequestSchema = exports.PairingRequestSchema = exports.PROTOCOL_VERSION = void 0;
+exports.CancelRequestSchema = exports.ActionRequestSchema = exports.ApprovalResponseSchema = exports.UserRequestSchema = exports.PairingRequestSchema = exports.PROTOCOL_VERSION = void 0;
 const zod_1 = require("zod");
 exports.PROTOCOL_VERSION = '1.0';
 // Zod validation schemas for incoming messages from Phone
@@ -21,5 +21,9 @@ exports.ApprovalResponseSchema = zod_1.z.object({
 exports.ActionRequestSchema = zod_1.z.object({
     action: zod_1.z.string().min(1),
     args: zod_1.z.record(zod_1.z.string(), zod_1.z.any()).optional(),
+    requestId: zod_1.z.string().optional(),
+});
+exports.CancelRequestSchema = zod_1.z.object({
+    requestId: zod_1.z.string().min(1),
 });
 //# sourceMappingURL=protocol.js.map

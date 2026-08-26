@@ -1,5 +1,5 @@
 {
-  "name": "contextpilot",
+  "name": "@kkantdev/contextpilot",
   "version": "1.0.0",
   "description": "ContextPilot Laptop Agent - Phone-to-Laptop developer bridge and AI agent",
   "main": "dist/index.js",
@@ -29,8 +29,12 @@
     "ollama",
     "cli"
   ],
-  "author": "",
+  "author": "kkantdev",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkantdev/ContextPilot.git"
+  },
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.1.0",

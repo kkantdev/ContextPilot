@@ -2,6 +2,16 @@
 
 ContextPilot is a phone-first local developer-agent tool. The ContextPilot mobile app (Flutter) pairs with the ContextPilot laptop agent (Node.js/npm) over a local network, so a developer can use their phone to inspect, understand, modify, test, and secure a software project running on their laptop.
 
+
+quick install
+
+npm install -g @kkantdev/contextpilot
+
+cd /path/to/your/project
+
+contextpilot start
+
+
 ## Repository Structure
 
 ```

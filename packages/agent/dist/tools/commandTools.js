@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerCommandTools = registerCommandTools;
-const child_process_1 = require("child_process");
 const registry_1 = require("../commands/registry");
 const systemTools_1 = require("./systemTools");
+const executor_1 = require("../commands/executor");
 const GROUP_TOOLS = {
     flutter: 'run_flutter_command',
     npm: 'run_npm_command',
@@ -54,31 +54,25 @@ async function runAction(workspace, group, actionName, args) {
             durationMs: Date.now() - startTime,
         };
     }
-    const command = def.build(args || {});
-    const startedAt = new Date().toISOString();
-    return await new Promise((resolve) => {
-        (0, child_process_1.exec)(command, { cwd: workspace.getWorkspaceRoot(), timeout: 120_000, maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
-            const durationMs = Date.now() - startTime;
-            const success = !error;
-            const output = {
-                action: def.action,
-                status: success ? 'success' : 'failed',
-                exitCode: error?.code ?? 0,
-                stdout: stdout.trim(),
-                stderr: stderr.trim(),
-                durationMs,
-                startedAt,
-                completedAt: new Date().toISOString(),
-            };
-            resolve({
-                tool: toolName,
-                success,
-                output,
-                ...(!success ? { error: error?.message || 'Command exited with non-zero status' } : {}),
-                durationMs,
-            });
-        });
-    });
+    // Delegate to streaming executor
+    const request = {
+        action: actionName,
+        args: args || {},
+        // Note: No operationId here as this is direct tool execution, not operation-based
+    };
+    try {
+        const commandResult = await (0, executor_1.runCommandTemplate)(workspace, request);
+        return (0, executor_1.commandResultToToolResult)(commandResult, toolName);
+    }
+    catch (error) {
+        return {
+            tool: toolName,
+            success: false,
+            output: null,
+            error: error?.message || 'Command execution failed',
+            durationMs: Date.now() - startTime,
+        };
+    }
 }
 function registerCommandTools(workspace) {
     return {

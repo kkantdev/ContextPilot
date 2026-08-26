@@ -6,6 +6,9 @@ export type CommandStatus = 'queued' | 'running' | 'success' | 'failed' | 'cance
 export interface CommandResult {
     action: string;
     operationId?: string;
+    requestId?: string;
+    projectDir?: string;
+    command?: string;
     tool?: string;
     status: CommandStatus;
     exitCode: number | null;
@@ -15,6 +18,13 @@ export interface CommandResult {
     startedAt: string;
     completedAt: string;
     error?: string;
+}
+/** A single chunk of live command output streamed to the phone. */
+export interface CommandOutputChunk {
+    operationId: string;
+    requestId?: string;
+    stream: 'stdout' | 'stderr';
+    data: string;
 }
 export type ErrorCode = 'PAIRING_TOKEN_EXPIRED' | 'INVALID_SESSION' | 'PROTOCOL_VERSION_UNSUPPORTED' | 'WORKSPACE_ACCESS_DENIED' | 'PATH_OUTSIDE_WORKSPACE' | 'COMMAND_NOT_ALLOWED' | 'COMMAND_FAILED' | 'COMMAND_UNAVAILABLE' | 'COMMAND_BLOCKED' | 'ACTION_NOT_FOUND' | 'AI_UNAVAILABLE' | 'MODEL_TIMEOUT' | 'TOOL_VALIDATION_FAILED' | 'TEST_FAILED' | 'INTERNAL_ERROR';
 export interface QRPayload {
@@ -157,11 +167,21 @@ export declare const ApprovalResponseSchema: z.ZodObject<{
 export declare const ActionRequestSchema: z.ZodObject<{
     action: z.ZodString;
     args: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    requestId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     action: string;
     args?: Record<string, any> | undefined;
+    requestId?: string | undefined;
 }, {
     action: string;
     args?: Record<string, any> | undefined;
+    requestId?: string | undefined;
+}>;
+export declare const CancelRequestSchema: z.ZodObject<{
+    requestId: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    requestId: string;
+}, {
+    requestId: string;
 }>;
 //# sourceMappingURL=protocol.d.ts.map

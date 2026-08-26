@@ -58,7 +58,7 @@
 ## PROJECT STRUCTURE
 
 ```
-contextpilot-npm/
+packages/agent/
 ├── bin/
 │   └── contextpilot.js              # Executable entrypoint (CLI wrapper)
 ├── docs/
@@ -281,7 +281,7 @@ All features from PRD and TRD are implemented:
 
 ```bash
 # Navigate to project directory
-cd /Users/madankryadav/Desktop/hackathon/contextpilot-npm
+   cd /Users/madankryadav/Desktop/hackathon/packages/agent
 
 # Install dependencies
 npm install
@@ -992,7 +992,7 @@ Before completing every task, complete this checklist:
 1. **Understand Architecture:** Review the flow in [Core Workflow](#core-workflow)
 2. **Set Up Local Environment:**
    ```bash
-   cd /Users/madankryadav/Desktop/hackathon/contextpilot-npm
+    cd /Users/madankryadav/Desktop/hackathon/packages/agent
    npm install
    npm run build
    npm test

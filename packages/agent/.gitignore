@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build / coverage
+coverage/
+*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development / runtime artifacts
+*.tgz
+.*.swp
+DS_Store
+.DS_Store
+
+# OS / editor
+.idea/
+.vscode/

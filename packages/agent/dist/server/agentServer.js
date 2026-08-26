@@ -49,6 +49,7 @@ const manager_2 = require("../operation/manager");
 const logger_1 = require("../utils/logger");
 const protocol_1 = require("../types/protocol");
 const registry_2 = require("../commands/registry");
+const executor_1 = require("../commands/executor");
 // Map a command group to its registered typed executor tool.
 const TOOL_BY_GROUP = {
     flutter: 'run_flutter_command',
@@ -77,7 +78,7 @@ class AgentServer {
         this.toolRegistry = new registry_1.ToolRegistry(workspaceManager, this.permissionEngine);
         this.aiOrchestrator = new orchestrator_1.AIOrchestrator(config, workspaceManager, this.toolRegistry);
         this.eventManager = new manager_1.EventManager();
-        this.operationManager = new manager_2.OperationManager(this.toolRegistry, this.eventManager);
+        this.operationManager = new manager_2.OperationManager(this.toolRegistry, this.eventManager, workspaceManager);
         this.app = (0, express_1.default)();
         this.app.use((0, cors_1.default)());
         this.app.use(express_1.default.json());
@@ -171,8 +172,8 @@ class AgentServer {
             if (!parseResult.success) {
                 return this.sendError(ws, 'TOOL_VALIDATION_FAILED', 'Action request requires a non-empty "action".');
             }
-            const { action, args } = parseResult.data;
-            return this.handleActionRequest(ws, action, args || {});
+            const { action, args, requestId } = parseResult.data;
+            return this.handleActionRequest(ws, action, args || {}, requestId);
         }
         if (type === 'user_request') {
             const parseResult = protocol_1.UserRequestSchema.safeParse(payload);
@@ -205,6 +206,27 @@ class AgentServer {
             }
             return;
         }
+        if (type === 'cancel_request' || type === 'command.cancel') {
+            const parseResult = protocol_1.CancelRequestSchema.safeParse(payload);
+            if (!parseResult.success) {
+                return this.sendError(ws, 'TOOL_VALIDATION_FAILED', 'Cancel request requires requestId.');
+            }
+            const { requestId } = parseResult.data;
+            // Try to cancel via command executor first (for direct streaming commands)
+            let cancelled = (0, executor_1.cancelCommand)(requestId);
+            // If that didn't work, try via operation manager (for operation-based flows)
+            if (!cancelled) {
+                cancelled = this.operationManager.cancelOperation(requestId);
+            }
+            if (cancelled) {
+                logger_1.logger.info(`Cancelled command/operation with requestId: ${requestId}`);
+                this.eventManager.broadcast('command.cancelled', { requestId });
+            }
+            else {
+                logger_1.logger.warn(`Failed to cancel command/operation with requestId: ${requestId} (not found or already completed)`);
+            }
+            return;
+        }
     }
     sendError(ws, code, message) {
         if (ws.readyState === ws_1.default.OPEN) {
@@ -218,18 +240,21 @@ class AgentServer {
     get port() {
         return this.config.port;
     }
-    async handleActionRequest(ws, action, args) {
+    async handleActionRequest(ws, action, args, requestId) {
         const def = (0, registry_2.getCommandDefinition)(action);
         if (!def) {
+            // Emit command.error for unknown action
+            this.eventManager.broadcast('command.error', {
+                requestId: requestId || `req-${Date.now()}`,
+                error: `Action "${action}" is not a registered ContextPilot command.`,
+            });
             return this.sendError(ws, 'COMMAND_NOT_ALLOWED', `Action "${action}" is not a registered ContextPilot command.`);
         }
-        const tool = TOOL_BY_GROUP[def.group];
-        if (!tool) {
-            return this.sendError(ws, 'COMMAND_NOT_ALLOWED', `Command group "${def.group}" has no executor tool.`);
-        }
-        // Model the action as a single-step plan so it flows through the existing
-        // operation + approval + streaming event pipeline.
+        // Create operation for existing protocol compatibility
         const op = this.operationManager.createOperation(`Device command: ${action}`);
+        const operationId = op.operationId;
+        const finalRequestId = requestId || operationId;
+        // Create single-step plan for existing protocol
         const requiresApproval = def.risk === 'REVIEW' || def.risk === 'DANGEROUS';
         const plan = {
             planId: `plan-${Date.now()}`,
@@ -238,15 +263,53 @@ class AgentServer {
                 {
                     stepId: 'step-1',
                     description: def.description,
-                    tool,
+                    tool: `run_${def.group}_command`,
                     args: { ...args, action },
                     riskLevel: def.risk,
                     requiresApproval,
                 },
             ],
         };
-        this.operationManager.setPlan(op.operationId, plan);
-        await this.operationManager.executeNextStep(op.operationId);
+        this.operationManager.setPlan(operationId, plan);
+        // Emit existing plan_created event
+        this.eventManager.broadcast('plan_created', { operationId, plan }, undefined, operationId);
+        if (requiresApproval) {
+            // Handle approval flow through operation manager
+            await this.operationManager.executeNextStep(operationId);
+            return;
+        }
+        // For SAFE commands, execute directly with streaming
+        this.eventManager.broadcast('tool_started', { operationId, stepId: 'step-1', tool: `run_${def.group}_command`, description: def.description }, undefined, operationId);
+        const request = {
+            action,
+            args: args || {},
+            operationId,
+            requestId: finalRequestId,
+            onEvent: (eventType, payload) => {
+                // Emit command.* streaming events
+                this.eventManager.broadcast(eventType, payload);
+            },
+        };
+        try {
+            const result = await (0, executor_1.runCommandTemplate)(this.workspaceManager, request);
+            // Emit existing tool_completed event
+            this.eventManager.broadcast('tool_completed', { operationId, stepId: 'step-1', tool: `run_${def.group}_command`, result: {
+                    tool: `run_${def.group}_command`,
+                    success: result.status === 'success',
+                    output: result,
+                    error: result.error,
+                    durationMs: result.durationMs,
+                } }, undefined, operationId);
+            if (result.status === 'success') {
+                this.eventManager.broadcast('operation_completed', { operationId, results: [result] }, undefined, operationId);
+            }
+            else {
+                this.eventManager.broadcast('operation_failed', { operationId, error: result.error, failedStep: plan.steps[0] }, undefined, operationId);
+            }
+        }
+        catch (error) {
+            this.eventManager.broadcast('operation_failed', { operationId, error: error.message, failedStep: plan.steps[0] }, undefined, operationId);
+        }
     }
     async start() {
         const firstPort = this.config.port;
